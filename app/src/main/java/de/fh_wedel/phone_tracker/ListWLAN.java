@@ -11,7 +11,6 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.StrictMode;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -37,13 +36,15 @@ import java.util.Set;
 
 public class ListWLAN extends Activity
 {
+    private static final String STATE_KEY_CONFIG = "config";
+
+    private ListWLANConfig config;
+
     WifiManager wifi;
     TextView textView;
     Map<String,Integer> bssidList;
     EditText editText;
     static Handler intervalHandler;
-    int interval = 10000; //milliseconds
-    static boolean autosend = false;
     CheckBox checkBoxAutosend;
     static BroadcastReceiver broadcastReceiver = null;
     Set<String> interestingSSIDs;
@@ -61,6 +62,14 @@ public class ListWLAN extends Activity
     {
         super.onCreate(savedInstanceState);
 
+        if (savedInstanceState != null) {
+            config = savedInstanceState.getParcelable(STATE_KEY_CONFIG);
+        }
+
+        if (config == null) {
+            config = new ListWLANConfig();
+        }
+
         /*
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -71,11 +80,11 @@ public class ListWLAN extends Activity
         textView = (TextView) findViewById(R.id.textView);
         editText = (EditText) findViewById(R.id.editText);
         checkBoxAutosend = (CheckBox) findViewById(R.id.checkBoxAutosend);
-        checkBoxAutosend.setChecked(autosend);
+        checkBoxAutosend.setChecked(config.getAutoSend());
         checkBoxAutosend.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                autosend = isChecked;
+                config.setAutoSend(isChecked);
             }
         });
         Button buttonClear = (Button) findViewById(R.id.buttonClear);
@@ -126,6 +135,17 @@ public class ListWLAN extends Activity
         // TODO: register for network change. disable on wrong ssid or no connection
     }
 
+    /**
+     * Called to retrieve per-instance state from an activity before being killed so that the state
+     * can be restored in onCreate(Bundle) or onRestoreInstanceState(Bundle) (the Bundle populated
+     * by this method will be passed to both).
+     * @param outState The bundle to persist to
+     */
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelable(STATE_KEY_CONFIG, config);
+    }
+
     private boolean checkWifi() {
         if (wifi.isWifiEnabled() == false)
         {
@@ -153,30 +173,45 @@ public class ListWLAN extends Activity
         }
     }
 
+    /**
+     * Starts a timer to periodically scan for new access points.
+     */
     private void onStartInterval() {
-        if (ListWLAN.this.checkWifi() == true) {
-            onScan();
+        if (ListWLAN.this.checkWifi()) {
+            triggerScan();
             intervalHandler.postDelayed(new Runnable() {
                 public void run() {
-                    if (ListWLAN.this.checkWifi() == true) {
-                        ListWLAN.this.onScan();
-                        intervalHandler.postDelayed(this, interval);
+                    if (ListWLAN.this.checkWifi()) {
+                        ListWLAN.this.triggerScan();
+                        intervalHandler.postDelayed(this, config.getAutoSendInterval());
                     }
                 }
-            }, interval);
+            }, config.getAutoSendInterval());
         }
     }
 
+    /**
+     * Stops periodic scanning for new access points.
+     */
     private void onStopInterval() {
-        intervalHandler.removeCallbacksAndMessages(null);
-        textView.append("stopped background scans\n");
+        if (intervalHandler != null) {
+            intervalHandler.removeCallbacksAndMessages(null);
+            textView.append("stopped background scans\n");
+        }
+
     }
 
-    private void onScan() {
+    /**
+     * Triggers a new access point scan.
+     */
+    private void triggerScan() {
         textView.append("requesting scan...\n");
         wifi.startScan();
     }
 
+    /**
+     * Sends known access points to the phone tracker server.
+     */
     private void send() {
         if (wifi.isWifiEnabled() == true) {
             JSONObject json = new JSONObject();
@@ -257,7 +292,7 @@ public class ListWLAN extends Activity
         // from http://androidsnippets.com/executing-a-http-post-request-with-httpclient
         // and http://stackoverflow.com/questions/6218143/how-to-send-post-request-in-json-using-httpclient
         DefaultHttpClient httpclient = new DefaultHttpClient();
-        HttpPost httppost = new HttpPost("http://stud.fh-wedel.de/~inf100314/tracker/tracker.php");
+        HttpPost httppost = new HttpPost(config.getServerUrl());
         try {
             StringEntity se = new StringEntity(json.toString());
             httppost.setEntity(se);
