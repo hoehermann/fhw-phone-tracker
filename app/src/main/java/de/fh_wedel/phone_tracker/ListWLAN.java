@@ -29,8 +29,10 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 public class ListWLAN extends Activity
@@ -44,10 +46,13 @@ public class ListWLAN extends Activity
     static boolean autosend = false;
     CheckBox checkBoxAutosend;
     static BroadcastReceiver broadcastReceiver = null;
+    Set<String> interestingSSIDs;
 
     public ListWLAN() {
         bssidList = new HashMap<String,Integer>();
         intervalHandler = new Handler();
+        interestingSSIDs = new HashSet<String>();
+        interestingSSIDs.add("FH-Visitor");
     }
 
     /* Called when the activity is first created. */
@@ -137,7 +142,7 @@ public class ListWLAN extends Activity
                 ssid = ssid.trim();
                 textView.append("connected SSID is " + ssid + "\n");
                 ssid = ssid.replace("\"", "");
-                if (ssid.equals("FH-Visitor")) {
+                if (interestingSSIDs.contains(ssid)) {
                     //textView.append("SSID okay\n");
                     return true;
                 } else {
@@ -209,14 +214,16 @@ public class ListWLAN extends Activity
         try {
             if (results != null) {
                 for (ScanResult sc : results) {
+                    if (interestingSSIDs.contains(sc.SSID)) {
                     /*
                     // cf. https://code.google.com/p/android/issues/detail?id=61128
                     long age = SystemClock.elapsedRealtime()*1000 - sc.timestamp;
                     if (age < 10*1000*1000) {
                     */
                         //textView.append(sc.BSSID + " @" + Integer.toString(sc.level) + "dBm "+"\n");
-                        bssidList.put(sc.BSSID, sc.level);
-                    //}
+                            bssidList.put(sc.BSSID, sc.level);
+                        //}
+                    }
                 }
                 textView.append("have " + Integer.toString(bssidList.size()) + " stations\n");
                 if (checkBoxAutosend.isChecked()) {
