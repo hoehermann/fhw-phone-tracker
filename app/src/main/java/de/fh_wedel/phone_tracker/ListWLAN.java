@@ -43,6 +43,7 @@ public class ListWLAN extends Activity
     int interval = 10000; //milliseconds
     static boolean autosend = false;
     CheckBox checkBoxAutosend;
+    static BroadcastReceiver broadcastReceiver = null;
 
     public ListWLAN() {
         bssidList = new HashMap<String,Integer>();
@@ -67,8 +68,11 @@ public class ListWLAN extends Activity
         checkBoxAutosend = (CheckBox) findViewById(R.id.checkBoxAutosend);
         checkBoxAutosend.setChecked(autosend);
         checkBoxAutosend.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {autosend = isChecked;}});
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                autosend = isChecked;
+            }
+        });
         Button buttonClear = (Button) findViewById(R.id.buttonClear);
         buttonClear.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -100,12 +104,20 @@ public class ListWLAN extends Activity
 
         wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
 
-        registerReceiver(new BroadcastReceiver() {
+        /*
+        if (broadcastReceiver != null) {
+            unregisterReceiver(broadcastReceiver); // this crashes. I cannot unregister previously registered receivers
+        }
+        */
+        // this produces IntentReceiver leaks
+        broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent intent) {
                 ListWLAN.this.onReceiveScanResults();
             }
-        }, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+        };
+        registerReceiver(broadcastReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+
         // TODO: register for network change. disable on wrong ssid or no connection
     }
 
@@ -115,7 +127,7 @@ public class ListWLAN extends Activity
             textView.append("wifi is disabled\n");
             return false;
         } else {
-            textView.append("wifi is enabled\n");
+            //textView.append("wifi is enabled\n");
             WifiInfo info = wifi.getConnectionInfo ();
             String ssid = info.getSSID();
             if (ssid == null) {
@@ -126,7 +138,7 @@ public class ListWLAN extends Activity
                 textView.append("connected SSID is " + ssid + "\n");
                 ssid = ssid.replace("\"", "");
                 if (ssid.equals("FH-Visitor")) {
-                    textView.append("SSID okay\n");
+                    //textView.append("SSID okay\n");
                     return true;
                 } else {
                     textView.append("SSID wrong\n");
@@ -152,6 +164,7 @@ public class ListWLAN extends Activity
 
     private void onStopInterval() {
         intervalHandler.removeCallbacksAndMessages(null);
+        textView.append("stopped background scans\n");
     }
 
     private void onScan() {
@@ -229,6 +242,7 @@ public class ListWLAN extends Activity
                 ListWLAN.this.textView.append("send finished\n");
             }
         }
+        ListWLAN.this.textView.append("sending in background...\n");
         new postDataTask().execute(json);
     }
 
