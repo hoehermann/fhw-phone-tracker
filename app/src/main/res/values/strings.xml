@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Phone-Tracker</string>
+
+    <string name="hello_world">Hello world!
+    </string>
+    <string name="action_settings">Settings</string>
+    <string name="buttonScan">scan</string>
+    <string name="buttonSend">send</string>
+    <string name="buttonClear">clear</string>
+    <string name="buttonRetrieve">retrieve</string>
+    <string name="buttonStart">start</string>
+    <string name="buttonStop">stop</string>
+    <string name="checkBoxAutosend">send automatically</string>
+</resources>
