@@ -11,10 +11,14 @@ import java.util.Set;
  */
 public class ListWLANConfig implements Parcelable {
     private boolean autoSend = false;
+    private boolean showBSSIDs = true;
 
     private int autoSendInterval = 10000;
 
-    private String serverUrl = "http://172.26.0.114:8000/tracker.php";
+    //private String serverUrl = "http://172.26.0.114:8000/tracker.php";
+    private String serverUrl = "https://stud.fh-wedel.de/~inf100314/tracker/tracker.php";
+
+    private String phoneID = "hehoe";
 
     /**
      * Used to filter a subset of interesting BSSIDS
@@ -53,6 +57,7 @@ public class ListWLANConfig implements Parcelable {
         this();
 
         autoSend = (boolean) parcel.readValue(null);
+        showBSSIDs = (boolean) parcel.readValue(null);
         serverUrl = parcel.readString();
         autoSendInterval = parcel.readInt();
     }
@@ -60,6 +65,7 @@ public class ListWLANConfig implements Parcelable {
     @Override
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeValue(autoSend);
+        parcel.writeValue(showBSSIDs);
         parcel.writeString(serverUrl);
         parcel.writeInt(autoSendInterval);
     }
@@ -115,5 +121,17 @@ public class ListWLANConfig implements Parcelable {
      */
     public void setServerUrl(String serverUrl) {
         this.serverUrl = serverUrl;
+    }
+
+    public String getPhoneID() {
+        return phoneID;
+    }
+
+    public boolean getShowBSSIDs() {
+        return this.showBSSIDs;
+    }
+
+    public void setShowBSSIDs(boolean showBSSIDs) {
+        this.showBSSIDs = showBSSIDs;
     }
 }

@@ -54,11 +54,24 @@
         android:id="@+id/textServer"
         android:hint="Server URL" />
 
-    <CheckBox
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/checkBoxAutosend"
-        android:id="@+id/checkBoxAutosend" />
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <CheckBox
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/checkBoxAutosend"
+            android:id="@+id/checkBoxAutosend" />
+
+        <CheckBox
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/checkBoxShowBSSIDs"
+            android:id="@+id/checkBoxShowBSSIDs"
+            android:checked="true" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="fill_parent"

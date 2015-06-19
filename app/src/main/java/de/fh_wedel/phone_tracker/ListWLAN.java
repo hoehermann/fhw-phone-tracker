@@ -48,6 +48,7 @@ public class ListWLAN extends Activity {
     EditText editTextComment;
     EditText editTextServerUrl;
     CheckBox checkBoxAutosend;
+    CheckBox checkBoxShowBSSIDs;
 
     ScanResult[] bufferedResults;
 
@@ -75,8 +76,10 @@ public class ListWLAN extends Activity {
 
                 textView.append(String.format("\nFound %s APs in range\n", bufferedResults.length));
 
-                for (ScanResult sr : bufferedResults) {
-                    textView.append(String.format("BSSID: %s, Level: %s\n", sr.BSSID, sr.level));
+                if (config.getShowBSSIDs() == true) {
+                    for (ScanResult sr : bufferedResults) {
+                        textView.append(String.format("BSSID: %s, Level: %s\n", sr.BSSID, sr.level));
+                    }
                 }
             }
         }, new IntentFilter(GatherBSSID.BROADCAST_ACTION));
@@ -116,6 +119,15 @@ public class ListWLAN extends Activity {
                 config.setAutoSend(isChecked);
             }
         });
+        checkBoxShowBSSIDs = (CheckBox) findViewById(R.id.checkBoxShowBSSIDs);
+        checkBoxShowBSSIDs.setChecked(config.getShowBSSIDs());
+        checkBoxShowBSSIDs.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                config.setShowBSSIDs(isChecked);
+            }
+        });
+        
         final Button buttonClear = (Button) findViewById(R.id.buttonClear);
         buttonClear.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -207,7 +219,7 @@ public class ListWLAN extends Activity {
         if (wifi.isWifiEnabled() == true) {
             JSONObject json = new JSONObject();
             try {
-                json.put("phone", "test");
+                json.put("phone", config.getPhoneID());
                 json.put("comment", editTextComment.getText());
                 editTextComment.setText("");
                 for (ScanResult entry : scanResults) {

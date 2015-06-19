@@ -11,4 +11,5 @@
     <string name="buttonStart">start</string>
     <string name="buttonStop">stop</string>
     <string name="checkBoxAutosend">send automatically</string>
+    <string name="checkBoxShowBSSIDs">show BSSIDs</string>
 </resources>
