@@ -17,6 +17,7 @@ import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.format.Time;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -34,6 +35,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 
 
 public class ListWLAN extends Activity {
@@ -72,9 +76,12 @@ public class ListWLAN extends Activity {
             public void onReceive(Context context, Intent intent) {
                 bufferedResults = (ScanResult[]) intent.getExtras().getParcelableArray(GatherBSSID.KEY_BROADCAST_SCANS);
 
-                Log.i(TAG, String.format("UI received %d interesting APs", bufferedResults.length));
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                String currentDateandTime = sdf.format(new Date());
 
-                textView.append(String.format("\nFound %s APs in range\n", bufferedResults.length));
+                Log.i(TAG, String.format("UI received %d interesting APs at %s", bufferedResults.length, currentDateandTime));
+
+                textView.append(String.format("\nFound %s APs in range at %s\n", bufferedResults.length, currentDateandTime));
 
                 if (config.getShowBSSIDs() == true) {
                     for (ScanResult sr : bufferedResults) {

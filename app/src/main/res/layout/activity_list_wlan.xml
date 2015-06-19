@@ -73,9 +73,16 @@
             android:checked="true" />
     </LinearLayout>
 
-    <TextView
+    <ScrollView
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:id="@+id/textViewLog" />
+        android:id="@+id/scrollView"
+        android:fillViewport="true">
+
+        <TextView
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/textViewLog" />
+    </ScrollView>
 
 </LinearLayout>
