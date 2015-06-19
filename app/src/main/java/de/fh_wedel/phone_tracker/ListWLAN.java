@@ -215,6 +215,7 @@ public class ListWLAN extends Activity
             if (results != null) {
                 for (ScanResult sc : results) {
                     if (interestingSSIDs.contains(sc.SSID)) {
+                        // TODO sollte lieber einfach auch beobachtete SSIDs mitsenden. dazu bssidList entfernen, JSON Objekt gleich hier zusammenbauen
                     /*
                     // cf. https://code.google.com/p/android/issues/detail?id=61128
                     long age = SystemClock.elapsedRealtime()*1000 - sc.timestamp;
