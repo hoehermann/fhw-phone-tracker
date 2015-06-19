@@ -1,6 +1,9 @@
 package de.fh_wedel.phone_tracker;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -10,7 +13,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -31,15 +34,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 
-public class ListWLAN extends Activity
-{
+public class ListWLAN extends Activity {
     private static final String TAG = "ListWLANActivity";
 
     public static final String STATE_KEY_CONFIG = "config";
@@ -56,8 +53,7 @@ public class ListWLAN extends Activity
 
     /* Called when the activity is first created. */
     @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         // Possibly read configuration from previous state
@@ -77,6 +73,11 @@ public class ListWLAN extends Activity
 
                 Log.i(TAG, String.format("UI received %d interesting APs", bufferedResults.length));
 
+                textView.append(String.format("\nFound %s APs in range\n", bufferedResults.length));
+
+                for (ScanResult sr : bufferedResults) {
+                    textView.append(String.format("BSSID: %s, Level: %s\n", sr.BSSID, sr.level));
+                }
             }
         }, new IntentFilter(GatherBSSID.BROADCAST_ACTION));
 
@@ -153,7 +154,10 @@ public class ListWLAN extends Activity
             }
         });
 
-        wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+
+
+
 
         // TODO: register for network change. disable on wrong ssid or no connection
     }
@@ -162,6 +166,7 @@ public class ListWLAN extends Activity
      * Called to retrieve per-instance state from an activity before being killed so that the state
      * can be restored in onCreate(Bundle) or onRestoreInstanceState(Bundle) (the Bundle populated
      * by this method will be passed to both).
+     *
      * @param outState The bundle to persist to
      */
     protected void onSaveInstanceState(Bundle outState) {
@@ -170,13 +175,12 @@ public class ListWLAN extends Activity
     }
 
     private boolean checkWifi() {
-        if (wifi.isWifiEnabled() == false)
-        {
+        if (wifi.isWifiEnabled() == false) {
             textView.append("wifi is disabled\n");
             return false;
         } else {
             //textView.append("wifi is enabled\n");
-            WifiInfo info = wifi.getConnectionInfo ();
+            WifiInfo info = wifi.getConnectionInfo();
             String ssid = info.getSSID();
             if (ssid == null) {
                 textView.append("unable to read SSID\n");
@@ -230,6 +234,7 @@ public class ListWLAN extends Activity
 
     /**
      * Send JSON data to the server in a background task
+     *
      * @param json Arbitrary JSON data
      */
     private void postDataAsync(JSONObject json) {
@@ -240,6 +245,7 @@ public class ListWLAN extends Activity
             protected Exception doInBackground(JSONObject... params) {
                 return self.postData(params[0]);
             }
+
             @Override
             protected void onPostExecute(Exception result) {
                 if (result == null) {
@@ -255,6 +261,7 @@ public class ListWLAN extends Activity
 
     /**
      * Send JSON data to the server on the foreground thread
+     *
      * @param json Arbitrary JSON data
      */
     private Exception postData(JSONObject json) {

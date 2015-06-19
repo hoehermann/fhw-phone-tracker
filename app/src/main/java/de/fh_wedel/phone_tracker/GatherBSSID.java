@@ -1,6 +1,7 @@
 package de.fh_wedel.phone_tracker;
 
 import android.app.IntentService;
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -21,7 +22,7 @@ public class GatherBSSID extends IntentService {
 
     private static String TAG = "GATHER_BSSID";
 
-    public static String BROADCAST_ACTION = "fhw.gather.bradcast";
+    public static String BROADCAST_ACTION = "fhw.gather.broadcast";
 
     public static String KEY_BROADCAST_SCANS = "scans";
 
@@ -78,6 +79,8 @@ public class GatherBSSID extends IntentService {
     @Override
     protected void onHandleIntent(Intent intent) {
         Log.i(TAG, "BSSID listening service has been started");
+
+        GatherNotificiation.ShowActive((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE), this);
 
         // Retrieve the configuration from the intent
         this.config = intent.getExtras().getParcelable(ListWLAN.STATE_KEY_CONFIG);
