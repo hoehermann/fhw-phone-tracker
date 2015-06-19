@@ -11,6 +11,9 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -36,6 +39,8 @@ import java.util.Set;
 
 public class ListWLAN extends Activity
 {
+    private static final String TAG = "ListWLANActivity";
+
     private static final String STATE_KEY_CONFIG = "config";
 
     private ListWLANConfig config;
@@ -43,7 +48,8 @@ public class ListWLAN extends Activity
     WifiManager wifi;
     TextView textView;
     Map<String,Integer> bssidList;
-    EditText editText;
+    EditText editTextComment;
+    EditText editTextServerUrl;
     static Handler intervalHandler;
     CheckBox checkBoxAutosend;
     static BroadcastReceiver broadcastReceiver = null;
@@ -77,8 +83,30 @@ public class ListWLAN extends Activity
 
         setContentView(R.layout.activity_list_wlan);
 
-        textView = (TextView) findViewById(R.id.textView);
-        editText = (EditText) findViewById(R.id.editText);
+        textView = (TextView) findViewById(R.id.textViewLog);
+        editTextComment = (EditText) findViewById(R.id.textComment);
+
+        // Wire up the UI for the server URL
+        editTextServerUrl = (EditText) findViewById(R.id.textServer);
+        editTextServerUrl.setText(config.getServerUrl());
+        editTextServerUrl.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                config.setServerUrl(charSequence.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+
+            }
+        });
+
+
         checkBoxAutosend = (CheckBox) findViewById(R.id.checkBoxAutosend);
         checkBoxAutosend.setChecked(config.getAutoSend());
         checkBoxAutosend.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -217,8 +245,8 @@ public class ListWLAN extends Activity
             JSONObject json = new JSONObject();
             try {
                 json.put("phone", "test");
-                json.put("comment", editText.getText());
-                editText.setText("");
+                json.put("comment", editTextComment.getText());
+                editTextComment.setText("");
                 for (Map.Entry<String, Integer> entry : bssidList.entrySet()) {
                     String bssid = entry.getKey();
                     Integer level = entry.getValue();
@@ -272,23 +300,36 @@ public class ListWLAN extends Activity
         }
     }
 
+    /**
+     * Send JSON data to the server in a background task
+     * @param json Arbitrary JSON data
+     */
     private void postDataAsync(JSONObject json) {
-        class postDataTask extends AsyncTask<JSONObject, Void, Long> {
+        final ListWLAN self = this;
+
+        class PostDataTask extends AsyncTask<JSONObject, Void, Exception> {
             @Override
-            protected Long doInBackground(JSONObject... params) {
-                ListWLAN.this.postData(params[0]);
-                return new Long(1);
+            protected Exception doInBackground(JSONObject... params) {
+                return self.postData(params[0]);
             }
             @Override
-            protected void onPostExecute(Long result) {
-                ListWLAN.this.textView.append("send finished\n");
+            protected void onPostExecute(Exception result) {
+                if (result == null) {
+                    self.textView.append("Send finished\n");
+                } else {
+                    self.textView.append(String.format("Send failed: %s\n", result.getMessage()));
+                }
             }
         }
-        ListWLAN.this.textView.append("sending in background...\n");
-        new postDataTask().execute(json);
+        ListWLAN.this.textView.append(String.format("Sending found BSSIDs to \"%s\"...\n", config.getServerUrl()));
+        new PostDataTask().execute(json);
     }
 
-    private void postData(JSONObject json) {
+    /**
+     * Send JSON data to the server on the foreground thread
+     * @param json Arbitrary JSON data
+     */
+    private Exception postData(JSONObject json) {
         // from http://androidsnippets.com/executing-a-http-post-request-with-httpclient
         // and http://stackoverflow.com/questions/6218143/how-to-send-post-request-in-json-using-httpclient
         DefaultHttpClient httpclient = new DefaultHttpClient();
@@ -299,10 +340,18 @@ public class ListWLAN extends Activity
             //httppost.setHeader("Accept", "application/json");
             httppost.setHeader("Content-type", "application/json");
             HttpResponse response = httpclient.execute(httppost);
+
+            return null;
         } catch (ClientProtocolException e) {
-            textView.append("ClientProtocolException occurred\n");
+            String debugOutput = String.format("ClientProtocolException occurred: %s\n", e);
+            Log.e(TAG, debugOutput, e);
+
+            return e;
         } catch (IOException e) {
-            textView.append("IOException occurred\n");
+            String debugOutput = String.format("IOException occurred: %s\n", e);
+            Log.e(TAG, debugOutput, e);
+
+            return e;
         }
     }
 

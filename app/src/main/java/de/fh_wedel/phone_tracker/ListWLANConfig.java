@@ -11,7 +11,7 @@ public class ListWLANConfig implements Parcelable {
 
     private int autoSendInterval = 10000;
 
-    private String serverUrl = "http://stud.fh-wedel.de/~inf100314/tracker/tracker.php";
+    private String serverUrl = "http://172.26.0.114:8000/tracker.php";
 
     public  ListWLANConfig() {
 
@@ -44,12 +44,14 @@ public class ListWLANConfig implements Parcelable {
     private ListWLANConfig(Parcel parcel) {
         autoSend = (boolean) parcel.readValue(null);
         serverUrl = parcel.readString();
+        autoSendInterval = parcel.readInt();
     }
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeValue(autoSend);
         parcel.writeString(serverUrl);
+        parcel.writeInt(autoSendInterval);
 
     }
 

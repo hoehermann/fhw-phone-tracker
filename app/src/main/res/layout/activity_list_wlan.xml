@@ -42,10 +42,17 @@
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/editText"
+        android:id="@+id/textComment"
         android:focusable="true"
         android:enabled="true"
-        android:focusableInTouchMode="true" />
+        android:focusableInTouchMode="true"
+        android:hint="Comment" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/textServer"
+        android:hint="Server URL" />
 
     <CheckBox
         android:layout_width="wrap_content"
@@ -56,7 +63,6 @@
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:text="@string/hello_world"
-        android:id="@+id/textView" />
+        android:id="@+id/textViewLog" />
 
 </LinearLayout>
