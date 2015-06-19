@@ -11,6 +11,7 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.v4.content.LocalBroadcastManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -41,26 +42,17 @@ public class ListWLAN extends Activity
 {
     private static final String TAG = "ListWLANActivity";
 
-    private static final String STATE_KEY_CONFIG = "config";
+    public static final String STATE_KEY_CONFIG = "config";
 
     private ListWLANConfig config;
 
     WifiManager wifi;
     TextView textView;
-    Map<String,Integer> bssidList;
     EditText editTextComment;
     EditText editTextServerUrl;
-    static Handler intervalHandler;
     CheckBox checkBoxAutosend;
-    static BroadcastReceiver broadcastReceiver = null;
-    Set<String> interestingSSIDs;
 
-    public ListWLAN() {
-        bssidList = new HashMap<String,Integer>();
-        intervalHandler = new Handler();
-        interestingSSIDs = new HashSet<String>();
-        interestingSSIDs.add("FH-Visitor");
-    }
+    ScanResult[] bufferedResults;
 
     /* Called when the activity is first created. */
     @Override
@@ -68,18 +60,26 @@ public class ListWLAN extends Activity
     {
         super.onCreate(savedInstanceState);
 
+        // Possibly read configuration from previous state
         if (savedInstanceState != null) {
             config = savedInstanceState.getParcelable(STATE_KEY_CONFIG);
         }
 
+        // If there was no previous state: Use default configuration
         if (config == null) {
             config = new ListWLANConfig();
         }
 
-        /*
-        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-        StrictMode.setThreadPolicy(policy);
-        */
+        LocalBroadcastManager.getInstance(this).registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                bufferedResults = (ScanResult[]) intent.getExtras().getParcelableArray(GatherBSSID.KEY_BROADCAST_SCANS);
+
+                Log.i(TAG, String.format("UI received %d interesting APs", bufferedResults.length));
+
+            }
+        }, new IntentFilter(GatherBSSID.BROADCAST_ACTION));
+
 
         setContentView(R.layout.activity_list_wlan);
 
@@ -115,50 +115,45 @@ public class ListWLAN extends Activity
                 config.setAutoSend(isChecked);
             }
         });
-        Button buttonClear = (Button) findViewById(R.id.buttonClear);
+        final Button buttonClear = (Button) findViewById(R.id.buttonClear);
         buttonClear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 ListWLAN.this.onClear();
             }
         });
+
+        // Wire up the start scanning button to
         Button buttonStart = (Button) findViewById(R.id.buttonStart);
         buttonStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ListWLAN.this.onStartInterval();
+                if (checkWifi()) {
+                    Intent intent = new Intent(ListWLAN.this, GatherBSSID.class);
+                    intent.putExtra(STATE_KEY_CONFIG, config);
+
+                    startService(intent);
+                }
             }
         });
         Button buttonStop = (Button) findViewById(R.id.buttonStop);
         buttonStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ListWLAN.this.onStopInterval();
+
             }
         });
         Button buttonSend = (Button) findViewById(R.id.buttonSend);
         buttonSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ListWLAN.this.send();
+                if (bufferedResults != null) {
+                    ListWLAN.this.send(bufferedResults);
+                }
             }
         });
 
         wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-
-        /*
-        if (broadcastReceiver != null) {
-            unregisterReceiver(broadcastReceiver); // this crashes. I cannot unregister previously registered receivers
-        }
-        */
-        // this produces IntentReceiver leaks
-        broadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context c, Intent intent) {
-                ListWLAN.this.onReceiveScanResults();
-            }
-        };
-        registerReceiver(broadcastReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
 
         // TODO: register for network change. disable on wrong ssid or no connection
     }
@@ -188,13 +183,13 @@ public class ListWLAN extends Activity
                 return false;
             } else {
                 ssid = ssid.trim();
-                textView.append("connected SSID is " + ssid + "\n");
+                textView.append("Connected SSID is " + ssid + "\n");
                 ssid = ssid.replace("\"", "");
-                if (interestingSSIDs.contains(ssid)) {
+                if (config.isInterestingSSID(ssid)) {
                     //textView.append("SSID okay\n");
                     return true;
                 } else {
-                    textView.append("SSID wrong\n");
+                    textView.append("SSID is not interesting\n");
                     return false;
                 }
             }
@@ -202,54 +197,18 @@ public class ListWLAN extends Activity
     }
 
     /**
-     * Starts a timer to periodically scan for new access points.
-     */
-    private void onStartInterval() {
-        if (ListWLAN.this.checkWifi()) {
-            triggerScan();
-            intervalHandler.postDelayed(new Runnable() {
-                public void run() {
-                    if (ListWLAN.this.checkWifi()) {
-                        ListWLAN.this.triggerScan();
-                        intervalHandler.postDelayed(this, config.getAutoSendInterval());
-                    }
-                }
-            }, config.getAutoSendInterval());
-        }
-    }
-
-    /**
-     * Stops periodic scanning for new access points.
-     */
-    private void onStopInterval() {
-        if (intervalHandler != null) {
-            intervalHandler.removeCallbacksAndMessages(null);
-            textView.append("stopped background scans\n");
-        }
-
-    }
-
-    /**
-     * Triggers a new access point scan.
-     */
-    private void triggerScan() {
-        textView.append("requesting scan...\n");
-        wifi.startScan();
-    }
-
-    /**
      * Sends known access points to the phone tracker server.
      */
-    private void send() {
+    private void send(ScanResult[] scanResults) {
         if (wifi.isWifiEnabled() == true) {
             JSONObject json = new JSONObject();
             try {
                 json.put("phone", "test");
                 json.put("comment", editTextComment.getText());
                 editTextComment.setText("");
-                for (Map.Entry<String, Integer> entry : bssidList.entrySet()) {
-                    String bssid = entry.getKey();
-                    Integer level = entry.getValue();
+                for (ScanResult entry : scanResults) {
+                    String bssid = entry.BSSID;
+                    Integer level = entry.level;
                     JSONObject ap = new JSONObject();
                     ap.put("bssid", bssid);
                     ap.put("level", level);
@@ -267,37 +226,6 @@ public class ListWLAN extends Activity
 
     private void onClear() {
         textView.setText("");
-    }
-
-    public void onReceiveScanResults()
-    {
-        textView.append("retrieving...\n");
-        bssidList.clear();
-        List<ScanResult> results = wifi.getScanResults();
-        try {
-            if (results != null) {
-                for (ScanResult sc : results) {
-                    if (interestingSSIDs.contains(sc.SSID)) {
-                    /*
-                    // cf. https://code.google.com/p/android/issues/detail?id=61128
-                    long age = SystemClock.elapsedRealtime()*1000 - sc.timestamp;
-                    if (age < 10*1000*1000) {
-                    */
-                        //textView.append(sc.BSSID + " @" + Integer.toString(sc.level) + "dBm "+"\n");
-                            bssidList.put(sc.BSSID, sc.level);
-                        //}
-                    }
-                }
-                textView.append("have " + Integer.toString(bssidList.size()) + " stations\n");
-                if (checkBoxAutosend.isChecked()) {
-                    send();
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            textView.append("exception occurred\n");
-        }
     }
 
     /**

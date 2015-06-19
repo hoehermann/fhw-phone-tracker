@@ -3,6 +3,9 @@ package de.fh_wedel.phone_tracker;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * User defined settings on how, where and when to scan for WiFi BSSIDs.
  */
@@ -13,8 +16,13 @@ public class ListWLANConfig implements Parcelable {
 
     private String serverUrl = "http://172.26.0.114:8000/tracker.php";
 
-    public  ListWLANConfig() {
+    /**
+     * Used to filter a subset of interesting BSSIDS
+     */
+    private Set<String> interestingSSIDs = new HashSet<>();
 
+    public ListWLANConfig() {
+        interestingSSIDs.add("FH-Visitor");
     }
 
     /**
@@ -42,6 +50,8 @@ public class ListWLANConfig implements Parcelable {
      * @param parcel The parcel to read from
      */
     private ListWLANConfig(Parcel parcel) {
+        this();
+
         autoSend = (boolean) parcel.readValue(null);
         serverUrl = parcel.readString();
         autoSendInterval = parcel.readInt();
@@ -52,7 +62,14 @@ public class ListWLANConfig implements Parcelable {
         parcel.writeValue(autoSend);
         parcel.writeString(serverUrl);
         parcel.writeInt(autoSendInterval);
+    }
 
+    /**
+     * @param ssid The SSID that might be interesting
+     * @return True, if the SSID is interesting
+     */
+    public boolean isInterestingSSID(String ssid) {
+        return (interestingSSIDs.contains(ssid.trim()));
     }
 
     /**
